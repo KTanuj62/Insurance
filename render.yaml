@@ -1,0 +1,38 @@
+# ===================================================================
+# render.yaml - Render Blueprint Configuration
+# ===================================================================
+#
+# WHAT IS THIS FILE?
+# -------------------
+# This file tells Render how to deploy your application.
+# Render reads this file to understand:
+#   - What type of service to create
+#   - How to build it
+#   - What resources to allocate
+#
+# You can also set up services manually on render.com dashboard
+# ===================================================================
+
+services:
+  # Web Service Configuration
+  - type: web
+    name: insurance-dashboard
+    
+    # Runtime environment
+    runtime: docker
+    
+    # GitHub repo branch to deploy from
+    branch: main
+    
+    # Plan type (free tier available!)
+    plan: free
+    
+    # Health check path
+    healthCheckPath: /_stcore/health
+    
+    # Environment variables (if needed)
+    envVars:
+      - key: STREAMLIT_SERVER_PORT
+        value: 8501
+      - key: STREAMLIT_SERVER_HEADLESS
+        value: true

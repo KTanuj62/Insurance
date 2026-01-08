@@ -1,0 +1,7 @@
+# Insurance Claims Dashboard Dependencies
+# ========================================
+# These are the Python packages required to run the app
+
+streamlit==1.31.0
+pandas==2.2.0
+plotly==5.18.0

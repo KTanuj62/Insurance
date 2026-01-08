@@ -1,0 +1,95 @@
+# ===================================================================
+# CI WORKFLOW - Continuous Integration Pipeline
+# ===================================================================
+#
+# WHAT IS CONTINUOUS INTEGRATION (CI)?
+# -------------------------------------
+# CI automatically tests your code every time you make changes.
+# Think of it as a robot that:
+#   1. Watches your GitHub repo
+#   2. When you push code, it grabs your changes
+#   3. Builds your app
+#   4. Runs tests
+#   5. Reports if anything broke
+#
+# WHY IS CI IMPORTANT?
+# ---------------------
+# - Catches bugs early (before they reach production)
+# - Ensures code quality
+# - Makes code reviews easier
+# - Gives confidence that changes don't break things
+#
+# ===================================================================
+
+# Name appears in GitHub Actions tab
+name: CI - Build and Test
+
+# WHEN SHOULD THIS WORKFLOW RUN?
+# 'on' defines the trigger events
+on:
+  # Run on pull requests to main branch
+  pull_request:
+    branches: [main]
+  
+  # Also run on pushes to main (for validation)
+  push:
+    branches: [main]
+
+# WHAT JOBS SHOULD RUN?
+jobs:
+  # Job name: 'build'
+  build:
+    # What machine to run on (GitHub-hosted runner)
+    runs-on: ubuntu-latest
+    
+    # Steps are executed in order
+    steps:
+      # Step 1: Checkout the code
+      # --------------------------
+      # This downloads your repo code to the runner
+      - name: Checkout code
+        uses: actions/checkout@v4
+      
+      # Step 2: Set up Python
+      # ----------------------
+      # This installs Python on the runner
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+      
+      # Step 3: Cache dependencies
+      # ---------------------------
+      # Saves pip packages between runs for faster builds
+      - name: Cache pip dependencies
+        uses: actions/cache@v4
+        with:
+          path: ~/.cache/pip
+          key: ${{ runner.os }}-pip-${{ hashFiles('**/requirements.txt') }}
+          restore-keys: |
+            ${{ runner.os }}-pip-
+      
+      # Step 4: Install dependencies
+      # -----------------------------
+      - name: Install dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install -r requirements.txt
+      
+      # Step 5: Lint with basic Python syntax check
+      # ---------------------------------------------
+      - name: Check Python syntax
+        run: |
+          python -m py_compile app.py
+          python -m py_compile src/data_loader.py
+          python -m py_compile src/kpis.py
+          python -m py_compile src/charts.py
+          python -m py_compile src/filters.py
+          python -m py_compile src/styles.py
+      
+      # Step 6: Validate Streamlit can import
+      # ---------------------------------------
+      - name: Validate imports
+        run: |
+          python -c "import streamlit; import pandas; import plotly"
+          echo "All imports successful!"

@@ -1,0 +1,61 @@
+# ===================================================================
+# .dockerignore - Files to exclude from Docker build
+# ===================================================================
+#
+# WHAT IS .dockerignore?
+# ----------------------
+# Similar to .gitignore, this file tells Docker which files to IGNORE
+# when copying your project into the container.
+#
+# WHY IS THIS IMPORTANT?
+# ----------------------
+# 1. Smaller images: Less files = smaller Docker image = faster deploys
+# 2. Security: Don't include sensitive files (like .env with secrets)
+# 3. Speed: Fewer files to process = faster builds
+#
+# ===================================================================
+
+# Git files (not needed in container)
+.git
+.gitignore
+
+# Python cache files
+__pycache__
+*.py[cod]
+*$py.class
+.Python
+*.so
+
+# Virtual environments (we install fresh in Docker)
+venv
+env
+.env
+.venv
+
+# IDE and editor files
+.vscode
+.idea
+*.swp
+*.swo
+*~
+
+# Testing and CI files
+.pytest_cache
+.coverage
+htmlcov
+.tox
+
+# Documentation
+docs
+*.md
+!README.md
+
+# Docker files (prevent nested builds)
+Dockerfile
+docker-compose*.yml
+.dockerignore
+
+# Misc
+.DS_Store
+Thumbs.db
+*.log

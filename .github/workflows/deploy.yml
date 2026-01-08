@@ -1,0 +1,59 @@
+# ===================================================================
+# CD WORKFLOW - Continuous Deployment Pipeline
+# ===================================================================
+#
+# WHAT IS CONTINUOUS DEPLOYMENT (CD)?
+# ------------------------------------
+# CD automatically deploys your code to production after it passes CI.
+# Think of it as the "shipping" part of the pipeline:
+#   1. CI verifies your code is good
+#   2. CD takes the verified code
+#   3. Builds the Docker image
+#   4. Deploys it to Render (or another platform)
+#
+# THE COMPLETE PIPELINE:
+#
+#   You push code → GitHub Actions triggers
+#         ↓
+#   CI: Build & Test (ci.yml)
+#         ↓ (if tests pass)
+#   CD: Build Docker & Deploy (this file)
+#         ↓
+#   Render: Your app is live!
+#
+# ===================================================================
+
+name: CD - Deploy to Render
+
+# Only deploy on push to main (not PRs)
+on:
+  push:
+    branches: [main]
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    
+    steps:
+      # Step 1: Checkout code
+      - name: Checkout code
+        uses: actions/checkout@v4
+      
+      # Step 2: Deploy to Render
+      # -------------------------
+      # Render automatically detects the Dockerfile and deploys
+      # We just need to trigger a deploy via their API
+      - name: Deploy to Render
+        env:
+          # This secret is stored in GitHub Secrets (Settings > Secrets)
+          # You'll add this after setting up Render
+          RENDER_DEPLOY_HOOK_URL: ${{ secrets.RENDER_DEPLOY_HOOK_URL }}
+        run: |
+          if [ -n "$RENDER_DEPLOY_HOOK_URL" ]; then
+            echo "Triggering Render deployment..."
+            curl -X POST "$RENDER_DEPLOY_HOOK_URL"
+            echo "Deployment triggered!"
+          else
+            echo "RENDER_DEPLOY_HOOK_URL not set. Skipping deployment."
+            echo "To enable: Add your Render deploy hook URL in GitHub Secrets"
+          fi
