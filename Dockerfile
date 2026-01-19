@@ -1,69 +1,154 @@
-# ===================================================================
+# =============================================================================
 # DOCKERFILE - Insurance Claims Dashboard
-# ===================================================================
-# 
-# WHAT IS A DOCKERFILE?
-# ---------------------
-# A Dockerfile is like a recipe that tells Docker how to build your app
-# into a "container" - a portable package that includes everything your
-# app needs to run (Python, libraries, your code, etc.)
+# =============================================================================
 #
-# Think of it like this:
-# - Your computer might have Python 3.9, but your friend has Python 3.11
-# - With Docker, both of you can run the EXACT same environment
-# - This eliminates "it works on my machine!" problems
+# OVERVIEW
+# --------
+# This Dockerfile defines the container image for the Insurance Dashboard.
+# It packages the Streamlit application with all its dependencies.
 #
-# HOW IT WORKS:
-# -------------
-# 1. Start with a base image (Python already installed)
-# 2. Copy your code into the container
-# 3. Install dependencies
-# 4. Define how to run your app
+# WHAT IS A DOCKER CONTAINER?
+# ---------------------------
+# A container is a lightweight, standalone package that includes:
+#   - Application code
+#   - Runtime environment (Python)
+#   - System libraries and dependencies
+#   - Configuration files
 #
-# ===================================================================
+# Containers ensure the application runs the same way in:
+#   - Local development
+#   - CI/CD testing
+#   - Production deployment
+#
+# DOCKERFILE INSTRUCTIONS
+# -----------------------
+# Each instruction creates a new layer in the image:
+#
+#   FROM      - Base image to start from
+#   WORKDIR   - Set the working directory
+#   COPY      - Copy files into the container
+#   RUN       - Execute commands during build
+#   EXPOSE    - Document which port the app uses
+#   CMD       - Command to run when container starts
+#
+# BUILD AND RUN COMMANDS
+# ----------------------
+# Build the image:
+#   docker build -t insurance-dashboard .
+#
+# Run the container:
+#   docker run -p 8501:8501 insurance-dashboard
+#
+# Access the application:
+#   http://localhost:8501
+#
+# =============================================================================
 
-# STEP 1: Start from Python base image
-# -------------------------------------
-# This is like saying "start with a computer that already has Python"
-# python:3.11-slim is a lightweight version (smaller download)
+# -----------------------------------------------------------------------------
+# STAGE 1: BASE IMAGE
+# -----------------------------------------------------------------------------
+# Using Python 3.11 slim variant for smaller image size.
+# The slim variant excludes development tools not needed at runtime.
+# 
+# Image size comparison:
+#   python:3.11        ~1GB
+#   python:3.11-slim   ~150MB
+# -----------------------------------------------------------------------------
 FROM python:3.11-slim
 
-# STEP 2: Set the working directory
-# ----------------------------------
-# This is like doing "cd /app" - all following commands run from here
+# -----------------------------------------------------------------------------
+# METADATA LABELS
+# -----------------------------------------------------------------------------
+# Labels provide metadata about the image for documentation and tooling.
+# -----------------------------------------------------------------------------
+LABEL maintainer="Insurance Dashboard Team"
+LABEL version="1.0"
+LABEL description="Streamlit dashboard for insurance claims analytics"
+
+# -----------------------------------------------------------------------------
+# WORKING DIRECTORY
+# -----------------------------------------------------------------------------
+# Sets the working directory inside the container.
+# All subsequent commands run from this directory.
+# -----------------------------------------------------------------------------
 WORKDIR /app
 
-# STEP 3: Copy requirements first (for caching)
-# -----------------------------------------------
-# Docker caches each step. By copying requirements first, Docker can
-# reuse the cached dependencies when only your code changes (not deps)
+# -----------------------------------------------------------------------------
+# INSTALL SYSTEM DEPENDENCIES
+# -----------------------------------------------------------------------------
+# Install curl for health checks.
+# Clean up apt cache to reduce image size.
+# -----------------------------------------------------------------------------
+RUN apt-get update && apt-get install -y --no-install-recommends \
+    curl \
+    && rm -rf /var/lib/apt/lists/*
+
+# -----------------------------------------------------------------------------
+# COPY REQUIREMENTS FIRST (LAYER CACHING OPTIMIZATION)
+# -----------------------------------------------------------------------------
+# Docker caches each layer. By copying requirements.txt first and installing
+# dependencies before copying application code, we can reuse the cached
+# dependencies layer when only application code changes.
+#
+# This significantly speeds up builds during development.
+# -----------------------------------------------------------------------------
 COPY requirements.txt .
 
-# STEP 4: Install Python dependencies
-# ------------------------------------
-# --no-cache-dir: Don't store pip's cache (saves space in container)
-RUN pip install --no-cache-dir -r requirements.txt
+# -----------------------------------------------------------------------------
+# INSTALL PYTHON DEPENDENCIES
+# -----------------------------------------------------------------------------
+# --no-cache-dir: Do not store pip's cache (saves space)
+# --upgrade pip: Ensure latest pip version for security and compatibility
+# -----------------------------------------------------------------------------
+RUN pip install --no-cache-dir --upgrade pip && \
+    pip install --no-cache-dir -r requirements.txt
 
-# STEP 5: Copy the rest of your application
-# -------------------------------------------
-# This copies all your code (app.py, src/, data/) into the container
+# -----------------------------------------------------------------------------
+# COPY APPLICATION CODE
+# -----------------------------------------------------------------------------
+# Copy all application files into the container.
+# The .dockerignore file excludes unnecessary files from the build context.
+# -----------------------------------------------------------------------------
 COPY . .
 
-# STEP 6: Expose the port Streamlit runs on
-# -------------------------------------------
-# EXPOSE doesn't actually publish the port, it's documentation
-# The actual port is opened when you run the container with -p flag
+# -----------------------------------------------------------------------------
+# EXPOSE PORT
+# -----------------------------------------------------------------------------
+# Documents that the container listens on port 8501.
+# This is informational only; actual port binding happens at runtime with -p.
+#
+# Streamlit's default port is 8501.
+# -----------------------------------------------------------------------------
 EXPOSE 8501
 
-# STEP 7: Health check (optional but recommended)
-# -------------------------------------------------
-# This tells Docker how to check if your app is healthy
-HEALTHCHECK CMD curl --fail http://localhost:8501/_stcore/health || exit 1
+# -----------------------------------------------------------------------------
+# HEALTH CHECK
+# -----------------------------------------------------------------------------
+# Defines how Docker determines if the container is healthy.
+# Streamlit exposes a health endpoint at /_stcore/health
+#
+# Parameters:
+#   --interval: How often to run the check (30 seconds)
+#   --timeout: Maximum time to wait for response (10 seconds)
+#   --start-period: Grace period before starting checks (5 seconds)
+#   --retries: Number of failures before marking unhealthy (3)
+# -----------------------------------------------------------------------------
+HEALTHCHECK --interval=30s --timeout=10s --start-period=5s --retries=3 \
+    CMD curl --fail http://localhost:8501/_stcore/health || exit 1
 
-# STEP 8: Define how to run the app
-# -----------------------------------
-# This is the command that runs when the container starts
-# --server.port: Which port to use
-# --server.address: 0.0.0.0 means accept connections from anywhere
-# --server.headless: Run without opening a browser
-CMD ["streamlit", "run", "app.py", "--server.port=8501", "--server.address=0.0.0.0", "--server.headless=true"]
+# -----------------------------------------------------------------------------
+# CONTAINER STARTUP COMMAND
+# -----------------------------------------------------------------------------
+# Command executed when the container starts.
+#
+# Streamlit configuration:
+#   --server.port=8501           Port to run on
+#   --server.address=0.0.0.0     Accept connections from any IP (required for Docker)
+#   --server.headless=true       Run without browser (server mode)
+#   --browser.gatherUsageStats=false   Disable telemetry
+# -----------------------------------------------------------------------------
+CMD ["streamlit", "run", "app.py", \
+     "--server.port=8501", \
+     "--server.address=0.0.0.0", \
+     "--server.headless=true", \
+     "--browser.gatherUsageStats=false"]
